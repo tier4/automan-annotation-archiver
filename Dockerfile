@@ -5,6 +5,7 @@ ENV LANG=C.UTF-8
 
 RUN apt-get update
 RUN apt-get install -y wget python3 python3-dev python3-pip libopencv-dev
+RUN pip3 install --upgrade pip
 RUN pip3 install pipenv
 RUN echo "export PATH=${HOME}/.local/bin:$PATH" >> ~/.bashrc
 
