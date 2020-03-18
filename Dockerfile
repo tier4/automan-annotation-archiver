@@ -1,20 +1,14 @@
-from ubuntu:16.04
+FROM python:3.8.1-slim
 
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
 
 RUN apt-get update && \
     apt-get install -y \
-    wget \
-    python3 \
-    python3-dev \
-    python3-pip \
     libopencv-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
-RUN pip3 install --upgrade pip
-RUN pip3 install pipenv
-RUN echo "export PATH=${HOME}/.local/bin:$PATH" >> ~/.bashrc
+RUN pip install --upgrade pip && pip install --no-cache-dir pipenv
 
 COPY Pipfile* /app/
 WORKDIR /app
