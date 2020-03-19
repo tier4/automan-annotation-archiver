@@ -74,7 +74,7 @@ class AutomanArchiver(object):
     def __get_annotation_image(automan_info, project_id, dataset_id, candidate_id, frame, ext):
         path = '/projects/' + str(project_id) + '/datasets/' + str(dataset_id) \
             + '/candidates/' + str(candidate_id) + '/frames/' + str(frame) + '/'
-        img_url = AutomanClient.send_get(automan_info, path).json()
+        img_url = AutomanClient.send_get(automan_info, path).text
         if re.search(automan_info['host'], img_url):
             headers = {
                 'Authorization': 'JWT ' + automan_info['jwt'],
