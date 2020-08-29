@@ -71,7 +71,7 @@ class AutomanArchiver(object):
     def __get_annotation_image(automan_info, project_id, dataset_id, candidate_id, frame):
         path = '/projects/' + str(project_id) + '/datasets/' + str(dataset_id) \
             + '/candidates/' + str(candidate_id) + '/frames/' + str(frame) + '/'
-        img_url = AutomanClient.send_get(automan_info, path).json()
+        img_url = AutomanClient.send_get(automan_info, path).content
         headers = {
             'Authorization': 'JWT ' + automan_info['jwt'],
         }
@@ -115,8 +115,8 @@ class AutomanArchiver(object):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    # FIXME parser.add_argument('--storage_type', required=True)
-    # FIXME parser.add_argument('--storage_info', required=True)
+    parser.add_argument('--storage_type', required=False)
+    parser.add_argument('--storage_info', required=False)
     parser.add_argument('--automan_info', required=True)
     parser.add_argument('--archive_info', required=True)
     args = parser.parse_args()
