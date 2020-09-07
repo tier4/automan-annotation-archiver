@@ -10,11 +10,14 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 RUN pip install --upgrade pip && pip install --no-cache-dir pipenv
 
-COPY Pipfile* /app/
-WORKDIR /app
+ENV WORKDIR /app/
+WORKDIR ${WORKDIR}
+
+COPY Pipfile ${WORKDIR}
 RUN pipenv install
 
-COPY . /app
+COPY . ${WORKDIR}
+
 SHELL ["/bin/bash", "-c"]
 ENTRYPOINT ["/app/bin/docker-entrypoint.bash"]
 CMD ["pipenv run python libs/automan_archiver.py --help"]

@@ -121,8 +121,8 @@ class AutomanArchiver(object):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--storage_type', required=True)
-    parser.add_argument('--storage_info', required=True)
+    parser.add_argument('--storage_type', required=False)
+    parser.add_argument('--storage_info', required=False)
     parser.add_argument('--automan_info', required=True)
     parser.add_argument('--archive_info', required=True)
     args = parser.parse_args()
