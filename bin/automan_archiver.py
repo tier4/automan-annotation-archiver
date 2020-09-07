@@ -3,10 +3,12 @@ import argparse
 import json
 import os
 import sys
+import re
 import requests
 import shutil
 import cv2
 sys.path.append(os.path.join(os.path.dirname(__file__), '../libs'))
+from core.storage_client_factory import StorageClientFactory
 from core.automan_client import AutomanClient
 
 TEMP_DIR = '/temp'
@@ -33,10 +35,10 @@ class AutomanArchiver(object):
         for i in range(max_frame):
             annotation = cls.__get_annotation(
                 automan_info, archive_info['project_id'], archive_info['annotation_id'], i + 1)
-            for j in candidates:
+            for candidate in candidates:
                 file_name = cls.__get_annotation_image(
                     automan_info, archive_info['project_id'],
-                    archive_info['dataset_id'], j, i + 1)
+                    archive_info['dataset_id'], candidate['id'], i + 1, candidate['ext'])
                 if file_name is not None:
                     cls.__draw_annotation(file_name, annotation, colors)
 
@@ -52,10 +54,11 @@ class AutomanArchiver(object):
     def __get_candidates(automan_info, project_id, original_id):
         path = '/projects/' + str(project_id) + '/originals/' + str(original_id) + '/candidates/'
         res = AutomanClient.send_get(automan_info, path).json()
-        candidate_ids = []
+        candidates = []
         for record in res['records']:
-            candidate_ids.append(record['candidate_id'])
-        return candidate_ids
+            ext = '.jpg' if record['data_type'] == 'IMAGE' else '.pcd'
+            candidates.append({'id': record['candidate_id'], 'ext': ext})
+        return candidates
 
     @staticmethod
     def __get_annotation(automan_info, project_id, annotation_id, frame):
@@ -68,17 +71,20 @@ class AutomanArchiver(object):
         return res
 
     @staticmethod
-    def __get_annotation_image(automan_info, project_id, dataset_id, candidate_id, frame):
+    def __get_annotation_image(automan_info, project_id, dataset_id, candidate_id, frame, ext):
         path = '/projects/' + str(project_id) + '/datasets/' + str(dataset_id) \
             + '/candidates/' + str(candidate_id) + '/frames/' + str(frame) + '/'
-        img_url = AutomanClient.send_get(automan_info, path).content
-        headers = {
-            'Authorization': 'JWT ' + automan_info['jwt'],
-        }
+        img_url = AutomanClient.send_get(automan_info, path).text
+        if re.search(automan_info['host'], img_url):
+            headers = {
+                'Authorization': 'JWT ' + automan_info['jwt'],
+            }
+        else:
+            headers = {}
         res = requests.get(img_url, headers=headers)
         if res.status_code != 200:
+            print('status_code = ' + str(res.status_code))
             return None
-        ext = '.jpg' if res.headers['Content-Type'] == 'image/jpeg' else '.pcd'
         file_name = str(candidate_id) + '_' + str(frame).zfill(6) + ext
         img_path = TEMP_DIR + '/Images/' + file_name
         with open(img_path, mode='wb') as frame:
@@ -122,10 +128,21 @@ if __name__ == '__main__':
     args = parser.parse_args()
     automan_info = json.loads(args.automan_info)
     archive_info = json.loads(args.archive_info)
+    archive_dir = archive_info['archive_dir'].rstrip('/') + '/'
+
+    storage_client = StorageClientFactory.create(
+        args.storage_type,
+        json.loads(args.storage_info),
+        archive_info
+    )
 
     AutomanArchiver.archive(automan_info, archive_info)
-    shutil.make_archive(archive_info['archive_dir'] + '/'
-                        + archive_info['archive_name'], 'gztar', root_dir=TEMP_DIR)
+    shutil.make_archive(
+        archive_dir + archive_info['archive_name'],
+        'gztar',
+        root_dir=TEMP_DIR)
+    if args.storage_type == 'AWS_S3':
+        storage_client.upload(automan_info, archive_dir)
 
     # TODO post : ArchiviedLabelDataset
     data = {
