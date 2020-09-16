@@ -9,3 +9,5 @@ verify_ssl = true
 requests = "*"
 opencv-python = "*"
 
+[requires]
+python_version = "3.8.1"
