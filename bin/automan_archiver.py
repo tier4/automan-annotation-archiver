@@ -83,7 +83,7 @@ class AutomanArchiver(object):
             headers = {}
         res = requests.get(img_url, headers=headers)
         if 200 > res.status_code >= 300:
-            print('get annotation image status_code = ' + str(res.status_code))
+            print(f'get annotation image status_code = {res.status_code}. body = {res.text}')
             return None
         file_name = str(candidate_id) + '_' + str(frame).zfill(6) + ext
         img_path = TEMP_DIR + '/Images/' + file_name
