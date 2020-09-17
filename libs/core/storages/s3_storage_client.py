@@ -21,11 +21,11 @@ class S3StorageClient(BaseStorageClient):
         if url is None:
             url = self.target_url
         req = requests.get(url, stream=True)
-        if req.status_code == 200:
+        if 200 <= req.status_code < 300:
             with open(self.rosbag_path, 'wb') as f:
                 f.write(req.content)
         else:
-            print('status_code = ' + str(req.status_code))
+            print(f's3 download status_code = {req.status_code}. body = {req.text}')
 
     def upload(self, automan_info, upload_dir=None, ext=''):
         if upload_dir is None:
@@ -45,8 +45,8 @@ class S3StorageClient(BaseStorageClient):
                     headers=headers,
                     data=open(filepath, 'rb')
                     )
-            if res.status_code != 204:
-                print('status_code=' + str(res.status_code) + ': ' + res.text)
+            if 200 > res.status_code >= 300:
+                print(f's3 upload status_code = {res.status_code}. body = {res.text}')
 
     def list(self):
         pass
