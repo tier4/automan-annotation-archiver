@@ -31,8 +31,8 @@ class AutomanClient():
 
         raise Exception('max retry limit exceeded')  # FIXME
 
-    @staticmethod
-    def send_get(automan_info, path=None, params=None):
+    @staticmethodz
+def send_get(automan_info, path=None, params=None):
         host = automan_info['host']
         if path is None:
             path = automan_info['path']
