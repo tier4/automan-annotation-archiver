@@ -15,10 +15,10 @@ WORKDIR ${WORKDIR}
 
 COPY Pipfile Pipfile.lock ${WORKDIR}/
 
-RUN pip3 install --upgrade pip setuptools\
+RUN pip3 install --upgrade pip setuptools \
     && pip3 --no-cache-dir install pipenv \
     && pipenv install --deploy --system \
-    && pip3 uninstall -y pipenv
+    && pipenv install
 
 COPY ./ ${WORKDIR}
 

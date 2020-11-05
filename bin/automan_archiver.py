@@ -23,19 +23,14 @@ class AutomanArchiver(object):
 
     @classmethod
     def archive(cls, automan_info, archive_info):
+        print(archive_info)
+
         annotations_dir = os.path.join(TEMP_DIR, 'Annotations')
         images_dir = os.path.join(TEMP_DIR, 'Images')
         image_annotations_dir = os.path.join(TEMP_DIR, 'Images_Annotations')
 
-        # ensure directories
-        os.makedirs(annotations_dir)
-        os.makedirs(images_dir)
-        os.makedirs(image_annotations_dir)
-
         # whether or not to write image in bag file to image files
         is_including_image = archive_info.get('include_image', False)
-
-        print(f'is_write_images: {is_including_image}')  # for debug
 
         max_frame = cls.__get_frame_range(
             automan_info, archive_info['project_id'], archive_info['annotation_id'])
@@ -77,6 +72,9 @@ class AutomanArchiver(object):
             + '/frames/' + str(frame) + '/objects/'
         res = AutomanClient.send_get(automan_info, path).json()
         # TODO format to "kitti format"
+
+        # ensure directory
+        os.makedirs(annotations_dir, exist_ok=True)
         with open(os.path.join( annotations_dir, str(frame).zfill(6) + '.json'), mode='w') as frame:
             frame.write(json.dumps(res))
         return res
@@ -96,6 +94,9 @@ class AutomanArchiver(object):
         if 200 > res.status_code >= 300:
             print(f'get annotation image status_code = {res.status_code}. body = {res.text}')
             return None
+
+        # write images
+        os.makedirs(images_dir, exist_ok=True)
         file_name = str(candidate_id) + '_' + str(frame).zfill(6) + ext
         img_path = os.path.join(images_dir, file_name)
         with open(img_path, mode='wb') as frame:
@@ -111,6 +112,7 @@ class AutomanArchiver(object):
         if annotation['count'] == 0:
             return 0
 
+        os.makedirs(image_annotations_dir, exist_ok=True)
         img = cv2.imread(os.path.join(images_dir, file_name))
         for a in annotation['records']:
             for c in a['content']:
