@@ -33,9 +33,9 @@ class AutomanArchiver(object):
         os.makedirs(image_annotations_dir)
 
         # whether or not to write image in bag file to image files
-        is_write_images = archive_info.get('write_images', False)
+        is_including_image = archive_info.get('include_image', False)
 
-        print(f'is_write_images: {is_write_images}')  # for debug
+        print(f'is_write_images: {is_including_image}')  # for debug
 
         max_frame = cls.__get_frame_range(
             automan_info, archive_info['project_id'], archive_info['annotation_id'])
@@ -45,7 +45,7 @@ class AutomanArchiver(object):
         for i in range(max_frame):
             annotation = cls.__get_annotation(
                 automan_info, archive_info['project_id'], archive_info['annotation_id'], i + 1, annotations_dir)
-            if is_write_images:
+            if is_including_image:
                 for candidate in candidates:
                     file_name = cls.__get_annotation_image(
                         automan_info, archive_info['project_id'],
