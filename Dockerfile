@@ -9,17 +9,13 @@ RUN apt-get -y update \
     && rm -rf /var/lib/apt/lists/*
 RUN pip install --upgrade pip && pip install --no-cache-dir pipenv
 
-FROM base as src
-
 ENV WORKDIR /app
 WORKDIR ${WORKDIR}
 
 COPY Pipfile Pipfile.lock ${WORKDIR}/
 
-RUN pip3 install --upgrade pip setuptools \
-    && pip3 --no-cache-dir install pipenv \
-    && pipenv install --deploy --system \
-    && pipenv install
+RUN pipenv install --deploy --system \
+    && pipenv sync
 
 COPY ./ ${WORKDIR}
 
