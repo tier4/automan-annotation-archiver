@@ -25,14 +25,14 @@ class AutomanClient():
                 return res
             except Exception as e:
                 print(e)
-                print("Try to resending complete signal to front server")
+                print(f"Try to resending complete signal to front server... {err_count}/{MAX_RETRY_COUNT}")
                 time.sleep(1)
                 err_count += 1
 
-        raise Exception  # FIXME
+        raise Exception('max retry limit exceeded')  # FIXME
 
     @staticmethod
-    def send_get(automan_info, path=None):
+    def send_get(automan_info, path=None, params=None):
         host = automan_info['host']
         if path is None:
             path = automan_info['path']
@@ -44,12 +44,12 @@ class AutomanClient():
         err_count = 0
         while err_count < MAX_RETRY_COUNT:
             try:
-                res = requests.get(automan_url, headers=headers)
+                res = requests.get(automan_url, headers=headers, params=params)
                 return res
             except Exception as e:
                 print(e)
-                print("Try to resending complete signal to front server")
+                print(f"Try to resending complete signal to front server... {err_count}/{MAX_RETRY_COUNT}")
                 time.sleep(1)
                 err_count += 1
 
-        raise Exception  # FIXME
+        raise Exception('max retry limit exceeded')  # FIXME
