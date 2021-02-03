@@ -41,7 +41,7 @@ class S3StorageClient(BaseStorageClient):
             presigned = json.loads(res)
             headers = {'content-type': 'application/octet-stream'}
             res = requests.put(
-                    presigned['url'],
+                    presigned['result'],
                     headers=headers,
                     data=open(filepath, 'rb')
                     )
