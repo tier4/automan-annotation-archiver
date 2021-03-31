@@ -67,7 +67,10 @@ class AutomanArchiver(object):
         if 200 > res.status_code >= 300:
             return None
 
-        return res.json()
+        try:
+            return res.json()
+        except json.JSONDecodeError:
+            return None
 
     @staticmethod
     def __get_frame_range(automan_info, project_id, annotation_id):
