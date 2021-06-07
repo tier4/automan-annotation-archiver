@@ -12,6 +12,16 @@ from core.automan_client import AutomanClient
 
 TEMP_DIR = '/temp'
 
+EXPORT_KLASS = [
+    {
+        'name': 'obstacle',
+        'file_name': 'obstacles.json',
+    },
+    {
+        'name': 'detection',
+        'file_name': 'detections.json',
+    },
+]
 
 def get_cv_color(colors, name):
     color = colors[name]
@@ -28,6 +38,10 @@ class AutomanArchiver(object):
         annotations_dir = os.path.join(TEMP_DIR, 'Annotations')
         images_dir = os.path.join(TEMP_DIR, 'Images')
         image_annotations_dir = os.path.join(TEMP_DIR, 'Images_Annotations')
+        export_dir = os.path.join(TEMP_DIR, 'Exports')
+        export_data = {}
+        for k in EXPORT_KLASS:
+            export_data[k['name']] = []
 
         # whether or not to write image in bag file to image files
         is_including_image = archive_info.get('include_image', False)
@@ -43,6 +57,8 @@ class AutomanArchiver(object):
             annotation = cls.__get_annotation(
                 automan_info, archive_info['project_id'], archive_info['annotation_id'], i + 1,
                 annotations_dir, map_to_base_link)
+            if len(annotation['records']) > 0:
+                cls.__add_export_data(annotation, map_to_base_link, i + 1, export_data)
             if is_including_image:
                 for candidate in candidates:
                     file_name = cls.__get_annotation_image(
@@ -50,12 +66,59 @@ class AutomanArchiver(object):
                         archive_info['dataset_id'], candidate['id'], i + 1, candidate['ext'], images_dir)
                     if file_name is not None:
                         cls.__draw_annotation(file_name, annotation, colors, images_dir, image_annotations_dir)
+        cls.__save_export_data(export_data, export_dir)
+
+    @staticmethod
+    def __save_export_data(export_data, export_dir):
+        os.makedirs(export_dir, exist_ok=True)
+        for k in EXPORT_KLASS:
+            with open(os.path.join(export_dir, k['file_name']), mode='w') as f:
+                annotations = export_data[k['name']]
+                if len(annotations) == 0:
+                    annotations.append({
+                        'annotation_frame_no': 1,
+                        'map_to_base_link': None,
+                        'records': [{
+                            'name': k['name'],
+                            'object_id': None,
+                            'instance_id': '',
+                            'content': {
+                                'memo': '{"start_time": 0, "end_time": 0}',
+                            }
+                        }]
+                    })
+                f.write(json.dumps({'annotations': annotations}))
+
+
+    @staticmethod
+    def __add_export_data(annotation, map_to_base_link, frame, export_data):
+        records = {}
+        for k in EXPORT_KLASS:
+            records[k['name']] = []
+        for label in annotation['records']:
+            name = label['name']
+            if name in export_data:
+                records[name].append(label)
+        for k in EXPORT_KLASS:
+            name = k['name']
+            if len(records[name]) > 0:
+                obj = {
+                    'annotation_frame_no': frame,
+                    'records': records[name]
+                }
+                if map_to_base_link is not None:
+                    obj['map_to_base_link'] = map_to_base_link[frame - 1]
+                export_data[name].append(obj)
 
     @staticmethod
     def __get_map_to_base_link(automan_info, project_id, dataset_id):
         path = '/projects/' + str(project_id) + '/datasets/' + str(dataset_id) \
             + '/map_to_base_link/'
-        res = AutomanClient.send_get(automan_info, path).json()
+        try:
+            res = AutomanClient.send_get(automan_info, path).json()
+        except json.JSONDecodeError:
+            return None
+
         file_url = res['file_link']
         if re.search(automan_info['host'], file_url):
             headers = {
