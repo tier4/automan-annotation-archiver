@@ -37,9 +37,12 @@ class AutomanArchiver(object):
         colors = cls.__get_annotation_color(automan_info, archive_info['project_id'])
         candidates = cls.__get_candidates(
             automan_info, archive_info['project_id'], archive_info['original_id'])
+        map_to_base_link = cls.__get_map_to_base_link(
+            automan_info, archive_info['project_id'], archive_info['dataset_id'])
         for i in range(max_frame):
             annotation = cls.__get_annotation(
-                automan_info, archive_info['project_id'], archive_info['annotation_id'], i + 1, annotations_dir)
+                automan_info, archive_info['project_id'], archive_info['annotation_id'], i + 1,
+                annotations_dir, map_to_base_link)
             if is_including_image:
                 for candidate in candidates:
                     file_name = cls.__get_annotation_image(
@@ -47,6 +50,27 @@ class AutomanArchiver(object):
                         archive_info['dataset_id'], candidate['id'], i + 1, candidate['ext'], images_dir)
                     if file_name is not None:
                         cls.__draw_annotation(file_name, annotation, colors, images_dir, image_annotations_dir)
+
+    @staticmethod
+    def __get_map_to_base_link(automan_info, project_id, dataset_id):
+        path = '/projects/' + str(project_id) + '/datasets/' + str(dataset_id) \
+            + '/map_to_base_link/'
+        res = AutomanClient.send_get(automan_info, path).json()
+        file_url = res['file_link']
+        if re.search(automan_info['host'], file_url):
+            headers = {
+                'Authorization': 'JWT ' + automan_info['jwt'],
+            }
+        else:
+            headers = {}
+        res = requests.get(file_url, headers=headers)
+        if 200 > res.status_code >= 300:
+            return None
+
+        try:
+            return res.json()
+        except json.JSONDecodeError:
+            return None
 
     @staticmethod
     def __get_frame_range(automan_info, project_id, annotation_id):
@@ -67,7 +91,7 @@ class AutomanArchiver(object):
         return candidates
 
     @staticmethod
-    def __get_annotation(automan_info, project_id, annotation_id, frame, annotations_dir):
+    def __get_annotation(automan_info, project_id, annotation_id, frame, annotations_dir, map_to_base_link):
         path = '/projects/' + str(project_id) + '/annotations/' + str(annotation_id) \
             + '/frames/' + str(frame) + '/objects/'
         res = AutomanClient.send_get(automan_info, path).json()
@@ -75,6 +99,10 @@ class AutomanArchiver(object):
 
         # ensure directory
         os.makedirs(annotations_dir, exist_ok=True)
+        if map_to_base_link is not None:
+            res['map_to_base_link'] = map_to_base_link[frame - 1];
+        else:
+            res['map_to_base_link'] = None;
         with open(os.path.join( annotations_dir, str(frame).zfill(6) + '.json'), mode='w') as frame:
             frame.write(json.dumps(res))
         return res
