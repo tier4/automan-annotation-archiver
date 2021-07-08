@@ -12,6 +12,12 @@ from core.automan_client import AutomanClient
 
 TEMP_DIR = '/temp'
 
+DATA_TYPE_PCD = 'PCD'
+DATA_TYPE_IMAGE = 'IMAGE'
+
+EXT_PCD = '.pcd'
+EXT_IMAGE = '.jpg'
+
 
 def get_cv_color(colors, name):
     color = colors[name]
@@ -32,19 +38,58 @@ class AutomanArchiver(object):
         # whether or not to write image in bag file to image files
         is_including_image = archive_info.get('include_image', False)
 
+        project_id = archive_info['project_id']
+        annotation_id = archive_info['annotation_id']
+        dataset_id = archive_info['dataset_id']
+
         max_frame = cls.__get_frame_range(
             automan_info, archive_info['project_id'], archive_info['annotation_id'])
         colors = cls.__get_annotation_color(automan_info, archive_info['project_id'])
         candidates = cls.__get_candidates(
             automan_info, archive_info['project_id'], archive_info['original_id'])
+
+        # ensure directory
+        os.makedirs(annotations_dir, exist_ok=True)
+
         for i in range(max_frame):
+            frame_num = i + 1
             annotation = cls.__get_annotation(
-                automan_info, archive_info['project_id'], archive_info['annotation_id'], i + 1, annotations_dir)
+                automan_info=automan_info,
+                project_id=project_id,
+                annotation_id=annotation_id,
+                frame=frame_num,
+            )
+
+            annotation_frame = None
+            for candidate in candidates:
+                if candidate['ext'] == EXT_PCD:
+                    annotation_frame = cls.__get_annotation_frame(
+                        automan_info=automan_info,
+                        project_id=project_id,
+                        dataset_id=dataset_id,
+                        candidate_id=candidate['id'],
+                        frame=frame_num,
+                    )
+
+            annotation['timestamp'] = {
+                'secs': annotation_frame['frame']['secs'],
+                'nsecs': annotation_frame['frame']['nsecs'],
+            }
+
+            with open(os.path.join(annotations_dir, str(frame_num).zfill(6) + '.json'), mode='w') as fp:
+                fp.write(json.dumps(annotation))
+
             if is_including_image:
                 for candidate in candidates:
                     file_name = cls.__get_annotation_image(
-                        automan_info, archive_info['project_id'],
-                        archive_info['dataset_id'], candidate['id'], i + 1, candidate['ext'], images_dir)
+                        automan_info=automan_info,
+                        project_id=project_id,
+                        dataset_id=dataset_id,
+                        candidate_id=candidate['id'],
+                        frame=i + 1,
+                        ext=candidate['ext'],
+                        images_dir=images_dir,
+                    )
                     if file_name is not None:
                         cls.__draw_annotation(file_name, annotation, colors, images_dir, image_annotations_dir)
 
@@ -62,28 +107,19 @@ class AutomanArchiver(object):
         res = AutomanClient.send_get(automan_info, path).json()
         candidates = []
         for record in res['records']:
-            ext = '.jpg' if record['data_type'] == 'IMAGE' else '.pcd'
+            ext = EXT_IMAGE if record['data_type'] == 'IMAGE' else EXT_PCD
             candidates.append({'id': record['candidate_id'], 'ext': ext})
         return candidates
 
     @staticmethod
-    def __get_annotation(automan_info, project_id, annotation_id, frame, annotations_dir):
+    def __get_annotation(automan_info, project_id, annotation_id, frame):
         path = '/projects/' + str(project_id) + '/annotations/' + str(annotation_id) \
             + '/frames/' + str(frame) + '/objects/'
-        res = AutomanClient.send_get(automan_info, path).json()
-        # TODO format to "kitti format"
-
-        # ensure directory
-        os.makedirs(annotations_dir, exist_ok=True)
-        with open(os.path.join( annotations_dir, str(frame).zfill(6) + '.json'), mode='w') as frame:
-            frame.write(json.dumps(res))
-        return res
+        return AutomanClient.send_get(automan_info, path).json()
 
     @staticmethod
     def __get_annotation_image(automan_info, project_id, dataset_id, candidate_id, frame, ext, images_dir):
-        path = '/projects/' + str(project_id) + '/datasets/' + str(dataset_id) \
-            + '/candidates/' + str(candidate_id) + '/frames/' + str(frame) + '/'
-        img_url = AutomanClient.send_get(automan_info, path).json()['image_link']
+        img_url = AutomanArchiver.__get_annotation_frame(automan_info, project_id, dataset_id, candidate_id, frame)['image_link']
         if re.search(automan_info['host'], img_url):
             headers = {
                 'Authorization': 'JWT ' + automan_info['jwt'],
@@ -101,9 +137,15 @@ class AutomanArchiver(object):
         img_path = os.path.join(images_dir, file_name)
         with open(img_path, mode='wb') as frame:
             frame.write(res.content)
-        if ext == '.jpg':
+        if ext == EXT_IMAGE:
             return file_name
         return None
+
+    @staticmethod
+    def __get_annotation_frame(automan_info, project_id, dataset_id, candidate_id, frame):
+        path = '/projects/' + str(project_id) + '/datasets/' + str(dataset_id) \
+               + '/candidates/' + str(candidate_id) + '/frames/' + str(frame) + '/'
+        return AutomanClient.send_get(automan_info, path).json()
 
     @staticmethod
     def __draw_annotation(file_name, annotation, colors, images_dir, image_annotations_dir):
