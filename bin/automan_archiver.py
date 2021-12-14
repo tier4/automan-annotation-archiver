@@ -51,6 +51,15 @@ class AutomanArchiver(object):
         # ensure directory
         os.makedirs(annotations_dir, exist_ok=True)
 
+        if 'extractor_version' in archive_info:
+            extractor_version = archive_info['extractor_version']
+        else:
+            extractor_version = [0, 0, 0]
+        format_version = {
+            'major': extractor_version[0],
+            'minor': extractor_version[1],
+            'patch': extractor_version[2],
+        }
         for i in range(max_frame):
             frame_num = i + 1
             annotation = cls.__get_annotation(
@@ -59,6 +68,7 @@ class AutomanArchiver(object):
                 annotation_id=annotation_id,
                 frame=frame_num,
             )
+            annotation['format_version'] = format_version
 
             annotation_frame = None
             for candidate in candidates:
